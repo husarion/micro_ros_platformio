@@ -34,8 +34,8 @@ extra_packages_path = "{}/extra_packages".format(env['PROJECT_DIR'])
 
 selected_board_meta = boards_metas[board] if board in boards_metas else "colcon.meta"
 
-# Retrieve the required transport. Default humble
-microros_distro = global_env.BoardConfig().get("microros_distro", "humble")
+# Retrieve the required transport. Default iron
+microros_distro = global_env.BoardConfig().get("microros_distro", "iron")
 
 # Retrieve the required transport. Default serial
 microros_transport = global_env.BoardConfig().get("microros_transport", "serial")
@@ -97,7 +97,8 @@ def build_microros(*args, **kwargs):
         "{} {} -fno-rtti -DCLOCK_MONOTONIC=0 -D'__attribute__(x)='".format(' '.join(env['CXXFLAGS']), ' '.join(env['CCFLAGS']))
     )
 
-    builder = library_builder.Build(library_folder=main_path, packages_folder=extra_packages_path, distro=microros_distro)
+    python_env_path = env['PROJECT_CORE_DIR'] + "/penv/bin/activate"
+    builder = library_builder.Build(library_folder=main_path, packages_folder=extra_packages_path, distro=microros_distro, python_env=python_env_path)
     builder.run('{}/metas/{}'.format(main_path, selected_board_meta), cmake_toolchain.path, microros_user_meta)
 
     #######################################################
@@ -134,6 +135,9 @@ def update_env():
     env.Append(CPPPATH=[
         main_path + "/platform_code",
         main_path + "/platform_code/{}/{}".format(framework, microros_transport)])
+
+    if (board == "teensy31" or board == "teensy35" or board == "teensy36"):
+        projenv.Append(LINKFLAGS=["--specs=nosys.specs"])
 
     # Add micro-ROS defines to user application
     projenv.Append(CPPDEFINES=[('MICRO_ROS_TRANSPORT_{}_{}'.format(framework.upper(), microros_transport.upper()), 1)])
