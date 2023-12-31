@@ -33,7 +33,7 @@ set(__BIG_ENDIAN__ 0)"""
         self.path = os.path.realpath(file.name)
 
 class Build:
-    def __init__(self, library_folder, packages_folder, distro):
+    def __init__(self, library_folder, packages_folder, distro, python_env):
         self.library_folder = library_folder
         self.packages_folder = packages_folder
         self.build_folder = library_folder + "/build"
@@ -51,10 +51,11 @@ class Build:
         self.library = self.library_path + "/libmicroros.a"
         self.includes = self.library_path+ '/include'
         self.library_name = "microros"
+        self.python_env = python_env
         self.env = {}
 
     def run(self, meta, toolchain, user_meta = ""):
-        if os.path.exists(self.library_path):
+        if os.path.exists(self.library):
             print("micro-ROS already built")
             return
 
@@ -99,7 +100,7 @@ class Build:
 
     def build_dev_environment(self):
         print("Building micro-ROS dev dependencies")
-        command = "cd {} && colcon build --cmake-args -DBUILD_TESTING=OFF".format(self.dev_folder)
+        command = "cd {} && . {} && colcon build --cmake-args -DBUILD_TESTING=OFF -DPython3_EXECUTABLE=`which python`".format(self.dev_folder, self.python_env)
         result = run_cmd(command, env=self.env)
 
         if 0 != result.returncode:
@@ -173,7 +174,7 @@ class Build:
         print("Building micro-ROS library")
 
         common_meta_path = self.library_folder + '/metas/common.meta'
-        colcon_command = 'colcon build --merge-install --packages-ignore-regex=.*_cpp --metas {} {} {} --cmake-args -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=OFF  -DTHIRDPARTY=ON  -DBUILD_SHARED_LIBS=OFF  -DBUILD_TESTING=OFF  -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE={}'.format(common_meta_path, meta_file, user_meta, toolchain_file)
+        colcon_command = '. {} && colcon build --merge-install --packages-ignore-regex=.*_cpp --metas {} {} {} --cmake-args -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=OFF  -DTHIRDPARTY=ON  -DBUILD_SHARED_LIBS=OFF  -DBUILD_TESTING=OFF  -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE={} -DPython3_EXECUTABLE=`which python`'.format(self.python_env, common_meta_path, meta_file, user_meta, toolchain_file)
         command = "cd {} && . {}/install/setup.sh && {}".format(self.mcu_folder, self.dev_folder, colcon_command)
         result = run_cmd(command, env=self.env)
 
@@ -182,6 +183,7 @@ class Build:
             sys.exit(1)
 
     def package_mcu_library(self):
+        binutils_path = self.resolve_binutils_path()
         aux_folder = self.build_folder + "/aux"
 
         shutil.rmtree(aux_folder, ignore_errors=True)
@@ -193,12 +195,12 @@ class Build:
                 if f.endswith('.a'):
                     os.makedirs(aux_folder + "/naming", exist_ok=True)
                     os.chdir(aux_folder + "/naming")
-                    os.system("ar x {}".format(root + "/" + f))
+                    os.system("{}ar x {}".format(binutils_path, root + "/" + f))
                     for obj in [x for x in os.listdir() if x.endswith('obj')]:
                         os.rename(obj, '../' + f.split('.')[0] + "__" + obj)
 
         os.chdir(aux_folder)
-        command = "ar rc libmicroros.a $(ls *.o *.obj 2> /dev/null); rm *.o *.obj 2> /dev/null; ranlib libmicroros.a"
+        command = "{binutils}ar rc libmicroros.a $(ls *.o *.obj 2> /dev/null); rm *.o *.obj 2> /dev/null; {binutils}ranlib libmicroros.a".format(binutils=binutils_path)
         result = run_cmd(command)
 
         if 0 != result.returncode:
@@ -211,13 +213,24 @@ class Build:
         shutil.copytree(self.build_folder + "/mcu/install/include", self.includes)
 
         # Fix include paths
-        if self.distro not in ["galactic", "foxy"]:
-            include_folders = os.listdir(self.includes)
+        include_folders = os.listdir(self.includes)
 
-            for folder in include_folders:
-                folder_path = self.includes + "/{}".format(folder)
-                repeated_path = folder_path + "/{}".format(folder)
+        for folder in include_folders:
+            folder_path = self.includes + "/{}".format(folder)
+            repeated_path = folder_path + "/{}".format(folder)
 
-                if os.path.exists(repeated_path):
-                    shutil.copytree(repeated_path, folder_path, copy_function=shutil.move, dirs_exist_ok=True)
-                    shutil.rmtree(repeated_path)
+            if os.path.exists(repeated_path):
+                shutil.copytree(repeated_path, folder_path, copy_function=shutil.move, dirs_exist_ok=True)
+                shutil.rmtree(repeated_path)
+
+    def resolve_binutils_path(self):
+        if sys.platform == "darwin":
+            homebrew_binutils_path = "/opt/homebrew/opt/binutils/bin/"
+            if os.path.exists(homebrew_binutils_path):
+                return homebrew_binutils_path
+
+            print("ERROR: GNU binutils not found. ({}) Please install binutils with homebrew: brew install binutils"
+                  .format(homebrew_binutils_path))
+            sys.exit(1)
+
+        return ""
