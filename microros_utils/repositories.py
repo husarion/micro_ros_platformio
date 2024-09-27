@@ -27,6 +27,14 @@ class Repository:
     def clone(self, folder):
         self.path = folder + "/" + self.name
         # TODO(pablogs) ensure that git is installed
+        if os.path.exists(self.path):
+            command = f"cd {self.path} && git pull {self.url} {self.branch}"
+            result = run_cmd(command)
+            if 0 != result.returncode:
+                print(f"{self.name} pull failed: \n{result.stderr.decode('utf-8')}")
+                sys.exit(1)
+            return
+
         command = "git clone -b {} {} {}".format(self.branch, self.url, self.path)
         result = run_cmd(command)
 
@@ -82,6 +90,14 @@ class Sources:
             Repository("googletest", "https://github.com/ament/googletest", "iron"),
             Repository("ament_cmake_ros", "https://github.com/ros2/ament_cmake_ros", "iron"),
             Repository("ament_index", "https://github.com/ament/ament_index", "iron")
+        ],
+        'jazzy': [
+            Repository("ament_cmake", "https://github.com/ament/ament_cmake", "jazzy"),
+            Repository("ament_lint", "https://github.com/ament/ament_lint", "jazzy"),
+            Repository("ament_package", "https://github.com/ament/ament_package", "jazzy"),
+            Repository("googletest", "https://github.com/ament/googletest", "jazzy"),
+            Repository("ament_cmake_ros", "https://github.com/ros2/ament_cmake_ros", "jazzy"),
+            Repository("ament_index", "https://github.com/ament/ament_index", "jazzy")
         ],
         'rolling': [
             Repository("ament_cmake", "https://github.com/ament/ament_cmake", "rolling"),
@@ -140,6 +156,30 @@ class Sources:
             Repository("rcl_logging", "https://github.com/ros2/rcl_logging", "iron"),
             Repository("ros2_tracing", "https://github.com/ros2/ros2_tracing", "iron"),
         ],
+        'jazzy': [
+            Repository("micro-CDR", "https://github.com/eProsima/micro-CDR", "jazzy", "ros2"),
+            Repository("Micro-XRCE-DDS-Client", "https://github.com/eProsima/Micro-XRCE-DDS-Client", "jazzy", "ros2"),
+            Repository("rcl", "https://github.com/micro-ROS/rcl", "jazzy"),
+            Repository("rclc", "https://github.com/ros2/rclc", "jazzy"),
+            Repository("micro_ros_utilities", "https://github.com/micro-ROS/micro_ros_utilities", "jazzy"),
+            Repository("rcutils", "https://github.com/micro-ROS/rcutils", "jazzy"),
+            Repository("micro_ros_msgs", "https://github.com/micro-ROS/micro_ros_msgs", "jazzy"),
+            Repository("rmw-microxrcedds", "https://github.com/micro-ROS/rmw-microxrcedds", "jazzy"),
+            Repository("rosidl_typesupport", "https://github.com/micro-ROS/rosidl_typesupport", "jazzy"),
+            Repository("rosidl_typesupport_microxrcedds", "https://github.com/micro-ROS/rosidl_typesupport_microxrcedds", "jazzy"),
+            Repository("rosidl", "https://github.com/ros2/rosidl", "jazzy"),
+            Repository("rosidl_dynamic_typesupport", "https://github.com/ros2/rosidl_dynamic_typesupport", "jazzy"),
+            Repository("rosidl_core", "https://github.com/ros2/rosidl_core", "jazzy"),
+            Repository("rmw", "https://github.com/ros2/rmw", "jazzy"),
+            Repository("rcl_interfaces", "https://github.com/ros2/rcl_interfaces", "jazzy"),
+            Repository("rosidl_defaults", "https://github.com/ros2/rosidl_defaults", "jazzy"),
+            Repository("unique_identifier_msgs", "https://github.com/ros2/unique_identifier_msgs", "jazzy"),
+            Repository("common_interfaces", "https://github.com/ros2/common_interfaces", "jazzy"),
+            Repository("test_interface_files", "https://github.com/ros2/test_interface_files", "jazzy"),
+            Repository("rmw_implementation", "https://github.com/ros2/rmw_implementation", "jazzy"),
+            Repository("rcl_logging", "https://github.com/ros2/rcl_logging", "jazzy"),
+            Repository("ros2_tracing", "https://github.com/ros2/ros2_tracing", "jazzy"),
+        ],
         'rolling': [
             Repository("micro-CDR", "https://github.com/eProsima/micro-CDR", "rolling", "ros2"),
             Repository("Micro-XRCE-DDS-Client", "https://github.com/eProsima/Micro-XRCE-DDS-Client", "rolling", "ros2"),
@@ -169,5 +209,6 @@ class Sources:
     ignore_packages = {
         'humble': ['rcl_logging_log4cxx', 'rcl_logging_spdlog', 'rcl_yaml_param_parser', 'rclc_examples'],
         'iron': ['test_tracetools', 'rcl_logging_spdlog', 'rcl_yaml_param_parser', 'rclc_examples'],
-        'rolling': ['test_tracetools', 'rcl_logging_spdlog', 'rcl_yaml_param_parser', 'rclc_examples']
+        'jazzy': ['test_tracetools', 'rcl_logging_spdlog', 'rcl_yaml_param_parser', 'rclc_examples','lttngpy'],
+        'rolling': ['test_tracetools', 'rcl_logging_spdlog', 'rcl_yaml_param_parser', 'rclc_examples','lttngpy']
     }
